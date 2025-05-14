@@ -72,6 +72,8 @@
       width: 100%;
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
   <h1>Volunteer Sign-Up</h1>
@@ -83,12 +85,25 @@
       <input type="text" id="name" placeholder="Your Name" required />
       <input type="number" id="age" placeholder="Your Age" required />
       <input type="text" id="school" placeholder="ATA School" required />
+      <input type="text" id="contact" placeholder="Contact Number" required />
       <button onclick="submitForm()">Submit</button>
       <button class="close" onclick="closeModal()">Cancel</button>
     </div>
   </div>
 
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxXksGZlaonPGo2iIeJFy31dNlzGQ9Ze4",
+      authDomain: "sedistricts.firebaseapp.com",
+      databaseURL: "https://sedistricts-default-rtdb.firebaseio.com",
+      projectId: "sedistricts",
+      storageBucket: "sedistricts.appspot.com",
+      messagingSenderId: "82368811038",
+      appId: "1:82368811038:web:1adf8236c205910b675e0f"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
     const volunteerRoles = {
       "Set Up": 20,
       "Check In": 10,
@@ -107,22 +122,32 @@
     let selectedRole = '';
 
     function renderRoles() {
-      Object.entries(volunteerRoles).forEach(([role, needed]) => {
-        const item = document.createElement('div');
-        item.className = 'volunteer-item';
+      listContainer.innerHTML = '';
+      Object.entries(volunteerRoles).forEach(([role, maxNeeded]) => {
+        const roleId = role.replace(/\s+/g, '_');
+        const slotRef = db.ref('volunteerSlots/' + roleId);
+        slotRef.once('value').then(snapshot => {
+          const signups = snapshot.val() || [];
+          const currentCount = Array.isArray(signups) ? signups.length : Object.keys(signups).length;
+          const isFull = currentCount >= maxNeeded;
 
-        const roleText = document.createElement('div');
-        roleText.className = 'volunteer-role';
-        roleText.innerText = `${role} — ${needed} volunteers needed`;
+          const item = document.createElement('div');
+          item.className = 'volunteer-item';
 
-        const button = document.createElement('button');
-        button.className = 'sign-up-button';
-        button.innerText = 'Sign Up';
-        button.onclick = () => openModal(role);
+          const roleText = document.createElement('div');
+          roleText.className = 'volunteer-role';
+          roleText.innerText = `${role} — ${currentCount} of ${maxNeeded} spots${isFull ? ' — FULL' : ''}`;
 
-        item.appendChild(roleText);
-        item.appendChild(button);
-        listContainer.appendChild(item);
+          const button = document.createElement('button');
+          button.className = 'sign-up-button';
+          button.innerText = 'Sign Up';
+          button.disabled = isFull;
+          button.onclick = () => openModal(role);
+
+          item.appendChild(roleText);
+          item.appendChild(button);
+          listContainer.appendChild(item);
+        });
       });
     }
 
@@ -137,20 +162,38 @@
       document.getElementById('name').value = '';
       document.getElementById('age').value = '';
       document.getElementById('school').value = '';
+      document.getElementById('contact').value = '';
     }
 
     function submitForm() {
       const name = document.getElementById('name').value.trim();
       const age = document.getElementById('age').value.trim();
       const school = document.getElementById('school').value.trim();
+      const contact = document.getElementById('contact').value.trim();
 
-      if (!name || !age || !school) {
+      if (!name || !age || !school || !contact) {
         alert('Please fill out all fields.');
         return;
       }
 
-      alert(`Signed up for ${selectedRole}\nName: ${name}\nAge: ${age}\nSchool: ${school}`);
-      closeModal();
+      const roleId = selectedRole.replace(/\s+/g, '_');
+      const slotRef = db.ref('volunteerSlots/' + roleId);
+      slotRef.once('value').then(snapshot => {
+        const signups = snapshot.val() || [];
+        const currentCount = Array.isArray(signups) ? signups.length : Object.keys(signups).length;
+        if (currentCount >= volunteerRoles[selectedRole]) {
+          alert('Sorry, that role is already full.');
+          closeModal();
+          renderRoles();
+          return;
+        }
+        const newSignup = { name, age, school, contact };
+        slotRef.push(newSignup).then(() => {
+          alert(`Signed up for ${selectedRole}!`);
+          closeModal();
+          renderRoles();
+        });
+      });
     }
 
     window.onload = renderRoles;
