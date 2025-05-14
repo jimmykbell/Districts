@@ -62,47 +62,35 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const volunteerRoles = {
-      "Set Up": 20,
-      "Check In": 10,
-      "Merchandise": 3,
-      "Medals": 2,
-      "Check In Saturday": 10,
-      "Merchandise Saturday": 3,
-      "Medals Saturday": 2,
-      "Check In Saturday Evening": 4,
-      "Merchandise Saturday Evening": 3,
-      "Medals Saturday Evening": 2,
-      "Break Down": 15
-    };
-
-    const adminDisplay = document.getElementById('adminDisplay');
     const checkboxGroup = document.getElementById('checkboxGroup');
+    const adminDisplay = document.getElementById('adminDisplay');
 
-    function renderCheckboxes() {
-      Object.keys(volunteerRoles).forEach(role => {
-        const label = document.createElement('label');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = role.replace(/\s+/g, '_');
-        checkbox.checked = true;
-        checkbox.onchange = renderAdminView;
-        label.appendChild(checkbox);
-        label.append(` ${role} `);
-        checkboxGroup.appendChild(label);
+    function renderCheckboxesAndView() {
+      db.ref('volunteerSlots').once('value').then(snapshot => {
+        const roles = Object.keys(snapshot.val() || {});
+        checkboxGroup.innerHTML = '';
+
+        roles.forEach(role => {
+          const label = document.createElement('label');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = role;
+          checkbox.checked = true;
+          checkbox.onchange = renderAdminView;
+          label.appendChild(checkbox);
+          label.append(` ${role} `);
+          checkboxGroup.appendChild(label);
+        });
+
+        renderAdminView();
       });
     }
 
     function renderAdminView() {
       adminDisplay.innerHTML = '';
-      const selectedRoleIds = Array.from(checkboxGroup.querySelectorAll('input:checked')).map(cb => cb.value);
-      const roleMap = Object.keys(volunteerRoles).reduce((map, role) => {
-        map[role.replace(/\s+/g, '_')] = role;
-        return map;
-      }, {});
+      const selectedRoles = Array.from(checkboxGroup.querySelectorAll('input:checked')).map(cb => cb.value);
 
-      selectedRoleIds.forEach(roleId => {
-        const role = roleMap[roleId];
+      selectedRoles.forEach(role => {
         const roleSection = document.createElement('div');
         roleSection.className = 'role-section';
 
@@ -118,7 +106,7 @@
           </tr>
         `;
 
-        db.ref('volunteerSlots/' + roleId).once('value').then(snapshot => {
+        db.ref('volunteerSlots/' + role).once('value').then(snapshot => {
           const signups = snapshot.val();
           if (signups) {
             Object.entries(signups).forEach(([key, person]) => {
@@ -129,7 +117,7 @@
                 <td>${person.school || ''}</td>
                 <td>${person.contact || ''}</td>
                 <td>${person.email || ''}</td>
-                <td><button class="delete-button" onclick="deleteSignup('${roleId}', '${key}')">Delete</button></td>
+                <td><button class="delete-button" onclick="deleteSignup('${role}', '${key}')">Delete</button></td>
               `;
               table.appendChild(row);
             });
@@ -145,18 +133,15 @@
       });
     }
 
-    function deleteSignup(roleId, key) {
+    function deleteSignup(role, key) {
       if (confirm('Are you sure you want to delete this signup?')) {
-        db.ref(`volunteerSlots/${roleId}/${key}`).remove().then(() => {
+        db.ref(`volunteerSlots/${role}/${key}`).remove().then(() => {
           renderAdminView();
         });
       }
     }
 
-    window.onload = () => {
-      renderCheckboxes();
-      renderAdminView();
-    };
+    window.onload = renderCheckboxesAndView;
   </script>
 </body>
 </html>
