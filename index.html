@@ -86,6 +86,7 @@
       <input type="number" id="age" placeholder="Your Age" required />
       <input type="text" id="school" placeholder="ATA School" required />
       <input type="text" id="contact" placeholder="Contact Number" required />
+      <input type="email" id="email" placeholder="Email Address" required />
       <button onclick="submitForm()">Submit</button>
       <button class="close" onclick="closeModal()">Cancel</button>
     </div>
@@ -163,6 +164,7 @@
       document.getElementById('age').value = '';
       document.getElementById('school').value = '';
       document.getElementById('contact').value = '';
+      document.getElementById('email').value = '';
     }
 
     function submitForm() {
@@ -170,8 +172,9 @@
       const age = document.getElementById('age').value.trim();
       const school = document.getElementById('school').value.trim();
       const contact = document.getElementById('contact').value.trim();
+      const email = document.getElementById('email').value.trim();
 
-      if (!name || !age || !school || !contact) {
+      if (!name || !age || !school || !contact || !email) {
         alert('Please fill out all fields.');
         return;
       }
@@ -187,7 +190,7 @@
           renderRoles();
           return;
         }
-        const newSignup = { name, age, school, contact };
+        const newSignup = { name, age, school, contact, email };
         slotRef.push(newSignup).then(() => {
           alert(`Signed up for ${selectedRole}!`);
           closeModal();
