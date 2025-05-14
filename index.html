@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Volunteer Sign-Up</title>
   <style>
     body {
@@ -13,39 +13,77 @@
     h1 {
       text-align: center;
     }
-    .slot {
+    .slot-list {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .slot-item {
       background: #fff;
       border: 1px solid #ccc;
       padding: 15px;
       margin: 10px 0;
       border-radius: 5px;
-    }
-    .slot h3 {
-      margin: 0 0 10px;
-    }
-    form {
       display: flex;
-      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
     }
-    input, textarea, button {
-      margin: 5px 0;
-      padding: 10px;
-      font-size: 1em;
-    }
-    button {
+    .slot-item button {
+      padding: 8px 12px;
+      font-size: 0.9em;
       background-color: #007BFF;
       color: white;
       border: none;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #0056b3;
+    .slot-item button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    #modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    #modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+    }
+    input {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+    }
+    button.close {
+      background: red;
+      margin-top: 10px;
     }
   </style>
-
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+  <h1>Volunteer Sign-Up</h1>
+  <div class="slot-list" id="slotList"></div>
+
+  <div id="modal">
+    <div id="modal-content">
+      <h3 id="modal-title"></h3>
+      <input type="text" id="name" placeholder="Your Name" required />
+      <input type="number" id="age" placeholder="Your Age" required />
+      <input type="text" id="school" placeholder="ATA School" required />
+      <button onclick="submitForm()">Submit</button>
+      <button class="close" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
@@ -73,167 +111,78 @@
       breakdown: 15
     };
 
-    function handleSubmit(event, slotId) {
-      event.preventDefault();
-      const form = event.target;
-      const name = form.querySelector('input[type="text"]').value;
-      const email = form.querySelector('input[type="email"]').value;
-      const notes = form.querySelector('textarea').value;
+    let selectedSlot = '';
 
-      const slotRef = db.ref('volunteerSlots/' + slotId);
-      slotRef.once('value').then(snapshot => {
-        const signups = snapshot.val() || [];
-        if (signups.length >= slots[slotId]) {
-          document.getElementById(slotId + '-confirmation').innerText = 'Sorry, this slot is full.';
-        } else {
-          signups.push({ name, email, notes });
-          slotRef.set(signups);
-          document.getElementById(slotId + '-confirmation').innerText = `Thank you, ${name}! You're signed up. (${signups.length}/${slots[slotId]} filled)`;
-          form.reset();
-        }
-      });
-    }
-
-    function checkSlots() {
+    function renderSlots() {
+      const container = document.getElementById('slotList');
+      container.innerHTML = '';
       Object.keys(slots).forEach(slotId => {
         const slotRef = db.ref('volunteerSlots/' + slotId);
         slotRef.once('value').then(snapshot => {
           const signups = snapshot.val() || [];
-          if (signups.length >= slots[slotId]) {
-            document.querySelector(`#${slotId}-form`).style.display = 'none';
-            document.querySelector(`#${slotId}-confirmation`).innerText = `Slot full. (${signups.length}/${slots[slotId]} filled)`;
-          } else {
-            document.querySelector(`#${slotId}-confirmation`).innerText = `${signups.length}/${slots[slotId]} filled`;
-          }
+          const remaining = slots[slotId] - signups.length;
+
+          const div = document.createElement('div');
+          div.className = 'slot-item';
+
+          const title = document.createElement('span');
+          title.innerText = `${formatSlotLabel(slotId)} — ${remaining > 0 ? remaining + ' spots left' : 'FULL'}`;
+
+          const button = document.createElement('button');
+          button.innerText = 'Sign Up';
+          button.disabled = remaining === 0;
+          button.onclick = () => openModal(slotId);
+
+          div.appendChild(title);
+          div.appendChild(button);
+          container.appendChild(div);
         });
       });
     }
 
-    window.onload = checkSlots;
+    function formatSlotLabel(slotId) {
+      return slotId.replace(/([A-Z])/g, ' $1').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function openModal(slotId) {
+      selectedSlot = slotId;
+      document.getElementById('modal-title').innerText = `Sign Up for ${formatSlotLabel(slotId)}`;
+      document.getElementById('modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('modal').style.display = 'none';
+      document.getElementById('name').value = '';
+      document.getElementById('age').value = '';
+      document.getElementById('school').value = '';
+    }
+
+    function submitForm() {
+      const name = document.getElementById('name').value.trim();
+      const age = document.getElementById('age').value.trim();
+      const school = document.getElementById('school').value.trim();
+
+      if (!name || !age || !school) return alert('Please complete all fields.');
+
+      const slotRef = db.ref('volunteerSlots/' + selectedSlot);
+      slotRef.once('value').then(snapshot => {
+        const signups = snapshot.val() || [];
+        if (signups.length >= slots[selectedSlot]) {
+          alert('Sorry, that spot is already full.');
+          closeModal();
+          renderSlots();
+          return;
+        }
+        signups.push({ name, age, school });
+        slotRef.set(signups).then(() => {
+          alert('Thank you for signing up!');
+          closeModal();
+          renderSlots();
+        });
+      });
+    }
+
+    window.onload = renderSlots;
   </script>
-</head>
-<body>
-  <h1>Volunteer Sign-Up</h1>
-
-  <div class="slot">
-    <h3>Set Up</h3>
-    <form id="setup-form" onsubmit="handleSubmit(event, 'setup')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="setup-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Check In</h3>
-    <form id="checkin-form" onsubmit="handleSubmit(event, 'checkin')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="checkin-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Merchandise</h3>
-    <form id="merchandise-form" onsubmit="handleSubmit(event, 'merchandise')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="merchandise-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Medals</h3>
-    <form id="medals-form" onsubmit="handleSubmit(event, 'medals')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="medals-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Check In Saturday</h3>
-    <form id="checkinSat-form" onsubmit="handleSubmit(event, 'checkinSat')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="checkinSat-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Merchandise Saturday</h3>
-    <form id="merchSat-form" onsubmit="handleSubmit(event, 'merchSat')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="merchSat-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Medals Saturday</h3>
-    <form id="medalsSat-form" onsubmit="handleSubmit(event, 'medalsSat')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="medalsSat-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Check In Saturday Evening</h3>
-    <form id="checkinSatPM-form" onsubmit="handleSubmit(event, 'checkinSatPM')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="checkinSatPM-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Merchandise Saturday Evening</h3>
-    <form id="merchSatPM-form" onsubmit="handleSubmit(event, 'merchSatPM')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="merchSatPM-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Medals Saturday Evening</h3>
-    <form id="medalsSatPM-form" onsubmit="handleSubmit(event, 'medalsSatPM')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="medalsSatPM-confirmation"></div>
-  </div>
-
-  <div class="slot">
-    <h3>Break Down</h3>
-    <form id="breakdown-form" onsubmit="handleSubmit(event, 'breakdown')">
-      <input type="text" placeholder="Your Name" required />
-      <input type="email" placeholder="Email (optional)" />
-      <textarea placeholder="Notes (optional)"></textarea>
-      <button type="submit">Sign Up</button>
-    </form>
-    <div id="breakdown-confirmation"></div>
-  </div>
 </body>
 </html>
