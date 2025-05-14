@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volunteer Sign-Up</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    .slot {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .slot h3 {
+      margin: 0 0 10px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+    input, textarea, button {
+      margin: 5px 0;
+      padding: 10px;
+      font-size: 1em;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function handleSubmit(event, slotId) {
+      event.preventDefault();
+      const form = event.target;
+      const name = form.querySelector('input[type="text"]').value;
+      const email = form.querySelector('input[type="email"]').value;
+      const notes = form.querySelector('textarea').value;
+
+      const slotRef = db.ref('volunteerSlots/' + slotId);
+      slotRef.once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          document.getElementById(slotId + '-confirmation').innerText = 'Sorry, this slot is already filled.';
+        } else {
+          slotRef.set({ name, email, notes });
+          document.getElementById(slotId + '-confirmation').innerText = `Thank you, ${name}! You're signed up.`;
+          form.reset();
+          form.style.display = 'none';
+        }
+      });
+    }
+
+    function checkSlots() {
+      ['slot1', 'slot2'].forEach(slotId => {
+        const slotRef = db.ref('volunteerSlots/' + slotId);
+        slotRef.once('value').then(snapshot => {
+          if (snapshot.exists()) {
+            document.querySelector(`#${slotId}-confirmation`).innerText = `Slot already filled by ${snapshot.val().name}`;
+            document.querySelector(`#${slotId}-form`).style.display = 'none';
+          }
+        });
+      });
+    }
+
+    window.onload = checkSlots;
+  </script>
+</head>
+<body>
+  <h1>Volunteer Sign-Up</h1>
+
+  <div class="slot">
+    <h3>Ring Judge - Saturday 9:00 AM - 12:00 PM</h3>
+    <form id="slot1-form" onsubmit="handleSubmit(event, 'slot1')">
+      <input type="text" placeholder="Your Name" required />
+      <input type="email" placeholder="Email (optional)" />
+      <textarea placeholder="Notes (optional)"></textarea>
+      <button type="submit">Sign Up</button>
+    </form>
+    <div id="slot1-confirmation"></div>
+  </div>
+
+  <div class="slot">
+    <h3>Scorekeeper - Saturday 12:00 PM - 3:00 PM</h3>
+    <form id="slot2-form" onsubmit="handleSubmit(event, 'slot2')">
+      <input type="text" placeholder="Your Name" required />
+      <input type="email" placeholder="Email (optional)" />
+      <textarea placeholder="Notes (optional)"></textarea>
+      <button type="submit">Sign Up</button>
+    </form>
+    <div id="slot2-confirmation"></div>
+  </div>
+</body>
+</html>
