@@ -91,15 +91,19 @@
           checkboxGroup.appendChild(label);
         });
 
-        renderAdminView();
+        renderAdminView(roles);
       });
     }
 
-    function renderAdminView() {
+    function renderAdminView(predefinedRoles = null) {
       adminDisplay.innerHTML = '';
       const selectedRoles = Array.from(checkboxGroup.querySelectorAll('input:checked')).map(cb => cb.value);
 
-      selectedRoles.forEach(role => {
+      const rolesToRender = predefinedRoles || selectedRoles;
+
+      rolesToRender.forEach(role => {
+        if (!selectedRoles.includes(role)) return;
+
         const roleSection = document.createElement('div');
         roleSection.className = 'role-section';
 
@@ -145,7 +149,7 @@
     function deleteSignup(role, key) {
       if (confirm('Are you sure you want to delete this signup?')) {
         db.ref(`volunteerSlots/${role}/${key}`).remove().then(() => {
-          renderAdminView();
+          renderCheckboxesAndView();
         });
       }
     }
