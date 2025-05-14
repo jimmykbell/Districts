@@ -84,7 +84,7 @@
         const label = document.createElement('label');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.value = role;
+        checkbox.value = role.replace(/\s+/g, '_');
         checkbox.checked = true;
         checkbox.onchange = renderAdminView;
         label.appendChild(checkbox);
@@ -95,10 +95,14 @@
 
     function renderAdminView() {
       adminDisplay.innerHTML = '';
-      const selectedRoles = Array.from(checkboxGroup.querySelectorAll('input:checked')).map(cb => cb.value);
+      const selectedRoleIds = Array.from(checkboxGroup.querySelectorAll('input:checked')).map(cb => cb.value);
+      const roleMap = Object.keys(volunteerRoles).reduce((map, role) => {
+        map[role.replace(/\s+/g, '_')] = role;
+        return map;
+      }, {});
 
-      selectedRoles.forEach(role => {
-        const roleId = role.replace(/\s+/g, '_');
+      selectedRoleIds.forEach(roleId => {
+        const role = roleMap[roleId];
         const roleSection = document.createElement('div');
         roleSection.className = 'role-section';
 
