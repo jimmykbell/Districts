@@ -7,183 +7,90 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
+      padding: 30px;
       background-color: #f9f9f9;
     }
+
     h1 {
       text-align: center;
     }
-    .slot-list {
-      max-width: 500px;
+
+    .volunteer-list {
+      max-width: 600px;
       margin: 0 auto;
     }
-    .slot-item {
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 5px;
+
+    .volunteer-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: #fff;
+      padding: 15px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
-    .slot-item button {
-      padding: 8px 12px;
-      font-size: 0.9em;
+
+    .volunteer-role {
+      font-size: 1.1em;
+    }
+
+    .sign-up-button {
       background-color: #007BFF;
       color: white;
+      padding: 8px 12px;
       border: none;
+      border-radius: 4px;
       cursor: pointer;
     }
-    .slot-item button:disabled {
-      background-color: #aaa;
-      cursor: not-allowed;
-    }
-    #modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      justify-content: center;
-      align-items: center;
-    }
-    #modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      width: 300px;
-    }
-    input {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-    }
-    button.close {
-      background: red;
-      margin-top: 10px;
+
+    .sign-up-button:hover {
+      background-color: #0056b3;
     }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
-  <h1>Volunteer Sign-Up</h1>
-  <div class="slot-list" id="slotList"></div>
 
-  <div id="modal">
-    <div id="modal-content">
-      <h3 id="modal-title"></h3>
-      <input type="text" id="name" placeholder="Your Name" required />
-      <input type="number" id="age" placeholder="Your Age" required />
-      <input type="text" id="school" placeholder="ATA School" required />
-      <button onclick="submitForm()">Submit</button>
-      <button class="close" onclick="closeModal()">Cancel</button>
-    </div>
+  <h1>Volunteer Sign-Up</h1>
+  <div class="volunteer-list" id="volunteerList">
+    <!-- List gets populated here -->
   </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBxXksGZlaonPGo2iIeJFy31dNlzGQ9Ze4",
-      authDomain: "sedistricts.firebaseapp.com",
-      databaseURL: "https://sedistricts-default-rtdb.firebaseio.com",
-      projectId: "sedistricts",
-      storageBucket: "sedistricts.appspot.com",
-      messagingSenderId: "82368811038",
-      appId: "1:82368811038:web:1adf8236c205910b675e0f",
-      measurementId: "G-BZKB8JVY01"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    const slots = {
-      setup: 20,
-      checkin: 10,
-      merchandise: 3,
-      medals: 2,
-      checkinSat: 10,
-      merchSat: 3,
-      medalsSat: 2,
-      checkinSatPM: 4,
-      merchSatPM: 3,
-      medalsSatPM: 2,
-      breakdown: 15
+    const volunteerRoles = {
+      "Set Up": 20,
+      "Check In": 10,
+      "Merchandise": 3,
+      "Medals": 2,
+      "Check In Saturday": 10,
+      "Merchandise Saturday": 3,
+      "Medals Saturday": 2,
+      "Check In Saturday Evening": 4,
+      "Merchandise Saturday Evening": 3,
+      "Medals Saturday Evening": 2,
+      "Break Down": 15
     };
 
-    let selectedSlot = '';
+    const listContainer = document.getElementById('volunteerList');
 
-    function renderSlots() {
-      const container = document.getElementById('slotList');
-      container.innerHTML = '';
-      Object.keys(slots).forEach(slotId => {
-        const slotRef = db.ref('volunteerSlots/' + slotId);
-        slotRef.once('value').then(snapshot => {
-          const signups = snapshot.val() || [];
-          const remaining = slots[slotId] - signups.length;
+    Object.entries(volunteerRoles).forEach(([role, needed]) => {
+      const item = document.createElement('div');
+      item.className = 'volunteer-item';
 
-          const div = document.createElement('div');
-          div.className = 'slot-item';
+      const roleText = document.createElement('div');
+      roleText.className = 'volunteer-role';
+      roleText.innerText = `${role} — ${needed} volunteers needed`;
 
-          const title = document.createElement('span');
-          title.innerText = `${formatSlotLabel(slotId)} — ${remaining > 0 ? remaining + ' spots left' : 'FULL'}`;
+      const button = document.createElement('button');
+      button.className = 'sign-up-button';
+      button.innerText = 'Sign Up';
+      button.onclick = () => alert(`Signing up for: ${role}`);
 
-          const button = document.createElement('button');
-          button.innerText = 'Sign Up';
-          button.disabled = remaining === 0;
-          button.onclick = () => openModal(slotId);
-
-          div.appendChild(title);
-          div.appendChild(button);
-          container.appendChild(div);
-        });
-      });
-    }
-
-    function formatSlotLabel(slotId) {
-      return slotId.replace(/([A-Z])/g, ' $1').replace(/\b\w/g, l => l.toUpperCase());
-    }
-
-    function openModal(slotId) {
-      selectedSlot = slotId;
-      document.getElementById('modal-title').innerText = `Sign Up for ${formatSlotLabel(slotId)}`;
-      document.getElementById('modal').style.display = 'flex';
-    }
-
-    function closeModal() {
-      document.getElementById('modal').style.display = 'none';
-      document.getElementById('name').value = '';
-      document.getElementById('age').value = '';
-      document.getElementById('school').value = '';
-    }
-
-    function submitForm() {
-      const name = document.getElementById('name').value.trim();
-      const age = document.getElementById('age').value.trim();
-      const school = document.getElementById('school').value.trim();
-
-      if (!name || !age || !school) return alert('Please complete all fields.');
-
-      const slotRef = db.ref('volunteerSlots/' + selectedSlot);
-      slotRef.once('value').then(snapshot => {
-        const signups = snapshot.val() || [];
-        if (signups.length >= slots[selectedSlot]) {
-          alert('Sorry, that spot is already full.');
-          closeModal();
-          renderSlots();
-          return;
-        }
-        signups.push({ name, age, school });
-        slotRef.set(signups).then(() => {
-          alert('Thank you for signing up!');
-          closeModal();
-          renderSlots();
-        });
-      });
-    }
-
-    window.onload = renderSlots;
+      item.appendChild(roleText);
+      item.appendChild(button);
+      listContainer.appendChild(item);
+    });
   </script>
+
 </body>
 </html>
